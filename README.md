@@ -1,4 +1,3 @@
-
 # 🤖 Agente Inteligente para Notas Fiscais - Jan/2024
 
 Este é um projeto de um agente inteligente de perguntas e respostas desenvolvido com Python, Streamlit e LangChain. Ele responde, em linguagem natural, perguntas sobre um arquivo CSV contendo notas fiscais emitidas em Janeiro de 2024.
@@ -11,7 +10,7 @@ Com base no conteúdo do arquivo `202401_NFs_Cabecalho.csv`, o agente:
 
 - Analisa os dados usando **Python** e **pandas**;
 - Interage por meio de **perguntas em linguagem natural**;
-- Usa um **modelo de linguagem (LLM)** via [OpenRouter](https://openrouter.ai) (ex: `mistralai/mixtral-8x7b-instruct`);
+- Usa um **modelo de linguagem (LLM)** via **OpenAI** (ex: `gpt-3.5-turbo`);
 - Apresenta os resultados de forma **clara, objetiva e em português do Brasil**.
 
 ---
@@ -37,7 +36,7 @@ cd I2A2---Tarefa2---NF
 ```bash
 python -m venv .venv
 source .venv/bin/activate      # Linux/macOS
-.venv\Scripts\activate       # Windows
+.venv\Scripts\activate         # Windows
 ```
 
 3. Instale as dependências:
@@ -46,17 +45,13 @@ source .venv/bin/activate      # Linux/macOS
 pip install -r requirements.txt
 ```
 
-4. Defina a variável de ambiente com sua chave da OpenRouter:
+4. Crie um arquivo `.env` na raiz do projeto com sua chave da OpenAI:
 
-```bash
-# Linux/macOS
-export OPENROUTER_API_KEY="sua-chave-aqui"
-
-# Windows (cmd)
-set OPENROUTER_API_KEY="sua-chave-aqui"
+```env
+OPENAI_API_KEY=sk-sua-chave-aqui
 ```
 
-> ⚠️ Não adicione sua chave ao código ou ao GitHub. Use variáveis de ambiente.
+> ⚠️ **Nunca compartilhe sua chave pública.** O uso de `.env` garante mais segurança.
 
 5. Execute o aplicativo Streamlit:
 
@@ -83,6 +78,7 @@ streamlit run app.py
 ├── agente.py
 ├── 202401_NFs_Cabecalho.csv
 ├── requirements.txt
+├── .env                 # (adicionado pelo usuário, não subir no GitHub)
 ├── README.md
 └── images/
     └── logo.jpg
@@ -92,22 +88,23 @@ streamlit run app.py
 
 ## 🧠 Modelo Utilizado
 
-Este projeto usa um modelo gratuito da OpenRouter: `mistralai/mixtral-8x7b-instruct`.  
-Você pode alterá-lo no arquivo `agente.py` conforme sua necessidade.
+Este projeto agora usa o modelo oficial da **OpenAI**: `gpt-3.5-turbo`.  
+Você pode alterá-lo para `gpt-4` ou outro, ajustando o arquivo `agente.py`.
 
 ---
 
 ## 📌 Observações
 
-- O agente sempre responderá em **português do Brasil**;
-- Se não encontrar a informação, ele dirá de forma educada que não conseguiu localizar nos dados disponíveis.
+- O agente sempre responde em **português do Brasil**;
+- Se não encontrar a informação, ele informa isso de forma educada;
+- O agente utiliza **LangChain + PythonREPLTool** para interpretar comandos e consultar o DataFrame carregado.
 
 ---
 
 ## 👨‍🏫 Desenvolvido por
 
-Projeto acadêmico desenvolvido por Dallan Borgheresi para o curso da I2A2 (Tarefa 2).
+Projeto acadêmico desenvolvido por **Dallan Borgheresi** para o curso da I2A2 (Tarefa 2).
 
 ---
 
-🧠 Com tecnologia: Python + LangChain + OpenRouter + Streamlit
+🧠 Com tecnologia: Python + LangChain + OpenAI + Streamlit
