@@ -1,66 +1,68 @@
 import os
+import re
 import pandas as pd
-from langchain.chat_models import ChatOpenAI
-from langchain.agents import Tool, initialize_agent
-from langchain.agents.agent_types import AgentType
-from langchain_experimental.tools.python.tool import PythonREPLTool
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langchain.schema import HumanMessage
+
 load_dotenv()
 
-
 def criar_agente(caminho_csv: str):
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    print("API KEY:", openai_api_key)
-    if not openai_api_key:
-        raise ValueError("A variável de ambiente OPENAI_API_KEY não está definida.")
-
-    # Carrega o CSV
-    df = pd.read_csv(caminho_csv, sep=';', encoding='utf-8', on_bad_lines='skip')
-
-    # Contexto global com DataFrame df
-    global_context = {"df": df}
-
-    ferramenta_execucao = PythonREPLTool(locals=global_context)
-
-    ferramentas = [
-        Tool(
-            name="Execução Python com pandas",
-            func=ferramenta_execucao.run,
-            description="Use esta ferramenta para responder perguntas com base no DataFrame `df`, que contém as notas fiscais."
+    # 1) Carrega o arquivo (CSV ou Excel)
+    if caminho_csv.lower().endswith(('.xls', '.xlsx')):
+        df = pd.read_excel(caminho_csv, engine="xlrd")
+    else:
+        df = pd.read_csv(
+            caminho_csv,
+            sep=';',
+            encoding='latin-1',
+            engine='python',
+            on_bad_lines='warn'
         )
-    ]
 
+    # Armazena a lista de colunas para passar ao prompt
+    colunas = df.columns.tolist()
+    colunas_str = ", ".join(repr(c) for c in colunas)
+
+    # 2) Cria o LLM
     llm = ChatOpenAI(
-        temperature=0.3,
-        model="gpt-3.5-turbo",
-        openai_api_key=openai_api_key
+        model_name="gpt-3.5-turbo",
+        temperature=0,
+        openai_api_key=os.getenv("OPENAI_API_KEY")
     )
 
-    prefixo = """Você é um agente inteligente especializado em análise de notas fiscais.
+    def run_query(pergunta: str) -> str:
+        # ---- passo 1: gerar código pandas (com as colunas explícitas) ----
+        prompt_code = f"""
+O DataFrame `df` tem estas colunas: {colunas_str}
 
-Seu objetivo é responder exclusivamente em **Português do Brasil**, de forma clara, educada e acessível, mesmo que a pergunta seja feita em outro idioma.
+Você é um gerador de **snippet** Python com pandas.  
+Receba a pergunta e **retorne somente** o código Python puro, sem comentários nem texto adicional, 
+usando exatamente as colunas disponíveis acima.
 
-Você analisa o DataFrame chamado `df`, que contém as Notas Fiscais emitidas em Janeiro de 2024.
+Pergunta: {pergunta}
 
-Você pode usar pandas e Python para calcular, filtrar ou resumir os dados conforme necessário.
-Seja cordial e amigável em suas respostas, evitando jargões técnicos.
-
-⚠️ NUNCA responda em inglês. NUNCA diga que é um modelo de linguagem. Caso perguntem "o que você é", diga:
-
-"Sou um agente inteligente de análise de Notas Fiscais, treinado para responder perguntas com base nos dados disponíveis no sistema."
-
-Caso não saiba a resposta, responda de forma amigável em português dizendo que não encontrou a informação solicitada nos dados disponíveis.
+Saída esperada: apenas código Python válido.
 """
+        snippet_msg = llm.predict_messages([HumanMessage(content=prompt_code)])
+        snippet = snippet_msg.content.strip()
 
-    agente = initialize_agent(
-        tools=ferramentas,
-        llm=llm,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        agent_kwargs={"prefix": prefixo},
-        verbose=False,
-        handle_parsing_errors=True,
-        max_iterations=50,
-        max_execution_time=500
-    )
+        # ---- passo 2: executar o snippet ----
+        try:
+            resultado = eval(snippet, {}, {"df": df})
+        except Exception as e:
+            return f"Erro ao executar o código gerado:\n  {e}\n\nCódigo:\n{snippet}"
 
-    return agente
+        # ---- passo 3: formatar a resposta em PT-BR ----
+        prompt_answer = f"""
+Você é um formatador de resultados.  
+Recebe o output Python de um pandas (variável `resultado = {resultado!r}`)  
+e deve retornar **em Português do Brasil**, iniciando com:
+"Os principais destinatários são: ..."  
+
+Apenas retorne essa frase final, sem aspas.
+"""
+        answer_msg = llm.predict_messages([HumanMessage(content=prompt_answer)])
+        return answer_msg.content.strip()
+
+    return run_query

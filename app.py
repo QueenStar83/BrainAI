@@ -2,53 +2,39 @@ import streamlit as st
 import pandas as pd
 from agente import criar_agente
 from dotenv import load_dotenv
-import os
 
-# Carrega variáveis do .env (se houver)
 load_dotenv()
 
-# Configuração da página
-st.set_page_config(page_title="Agente Inteligente para Notas Fiscais", layout="wide")
+st.set_page_config(page_title="Agente Inteligente para NF", layout="wide")
 
-# Cabeçalho com logo e título lado a lado
-col1, col2 = st.columns([1, 10])
-with col1:
-    st.image("images/logo.jpg", width=130)
-with col2:
-    st.markdown(
-        "<h1 style='display: flex; align-items: center; margin-bottom: 0;'>Agente Inteligente para Notas Fiscais</h1>",
-        unsafe_allow_html=True
-    )
+st.title("🤖 Agente de Notas Fiscais - Janeiro/2024")
 
-# Mensagem inicial e exemplos de perguntas
 st.markdown("""
-### 🤖 Faça perguntas sobre as notas fiscais de janeiro de 2024!
-
-**Exemplos de perguntas:**
-- 🧾 Qual o valor total das notas fiscais?
-- 📍 Quais estados mais emitiram notas?
-- 👤 Quais os principais destinatários?
-- 💬 (pressione Enter para enviar)*
+Faça perguntas como:
+- Qual o valor total das notas?
+- Qual UF mais emitiu notas?
+- Quais os principais destinatários?
 """)
 
-csv_path = "202401_NFs_Cabecalho.csv"
+# Escolha aqui qual arquivo usar: cabeçalho (CSV) ou itens (XLS)
+CSV_PATH = "202401_NFs_Itens.xls"
 
-# Carrega o DataFrame caso precise usar em outras funções (mantém, mas não exibe)
-df = pd.read_csv(csv_path, sep=';', encoding='utf-8', on_bad_lines='skip')
-# st.dataframe(df.head())  # Exibe somente se quiser ver a tabela (deixe comentado)
+# Carrega um exemplo rápido para mostrar (opcional)
+with st.expander("📂 Preview do DataFrame"):
+    if CSV_PATH.lower().endswith(('.xls', '.xlsx')):
+        sample = pd.read_excel(CSV_PATH, engine="xlrd")
+    else:
+        sample = pd.read_csv(
+            CSV_PATH, sep=';', encoding='latin-1', engine='python', on_bad_lines='warn'
+        )
+    st.dataframe(sample.head())
 
-try:
-    # Cria o agente com acesso ao DataFrame
-    agente = criar_agente(csv_path)
-    pergunta = st.text_input("Pergunta", placeholder="Digite sua pergunta aqui...", label_visibility="collapsed")
+# Cria a função de consulta
+run_query = criar_agente(CSV_PATH)
 
-
-    if pergunta:
-        with st.spinner("🔎 Consultando os dados..."):
-            resposta = agente.run(pergunta)
-            st.markdown("### 📄 Resposta:")
-            st.write(resposta)
-except ValueError as e:
-    st.error(str(e))
-except Exception as ex:
-    st.error(f"Ocorreu um erro inesperado: {ex}")
+pergunta = st.text_input("Digite sua pergunta aqui:", "")
+if pergunta:
+    with st.spinner("Processando…"):
+        resposta = run_query(pergunta)
+    st.markdown("### 📄 Resposta:")
+    st.write(resposta)

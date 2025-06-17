@@ -6,3 +6,5 @@ streamlit
 tabulate
 langchain-community
 langchain-openai
+xlrd
+openpyxl
