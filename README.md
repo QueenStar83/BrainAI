@@ -220,5 +220,3 @@ BrainAI/
 4. Abra um **Pull Request**  
 
 ---
-
-Feito com ❤️ por Dallan Ricardo de Moraes Zanini Borgheresi  
